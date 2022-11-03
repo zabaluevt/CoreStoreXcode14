@@ -54,7 +54,14 @@ extension FieldCoders {
 
         internal static var transformerName: NSValueTransformerName {
 
-            return .secureUnarchiveFromDataTransformerName
+            if #available(iOS 12.0, tvOS 12.0, watchOS 5.0, macOS 10.14, *) {
+
+                return .secureUnarchiveFromDataTransformerName
+            }
+            else {
+
+                return .keyedUnarchiveFromDataTransformerName
+            }
         }
     }
 }

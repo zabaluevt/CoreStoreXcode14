@@ -108,7 +108,7 @@ extension NSManagedObjectContext {
     @nonobjc
     internal func objectsDidChangeObserver<U: AnyObject>(for observer: U) -> Internals.SharedNotificationObserver<(updated: Set<NSManagedObjectID>, deleted: Set<NSManagedObjectID>)> {
 
-        return self.userInfo(for: .objectsChangeObserver(U.self)) {
+        return self.userInfo(for: .objectsChangeObserver(U.self)) { [unowned self] in
 
             return .init(
                 notificationName: .NSManagedObjectContextObjectsDidChange,
@@ -175,7 +175,7 @@ extension NSManagedObjectContext {
         }
     }
 
-    private func userInfo<T>(for key: UserInfoKeys, initialize: () -> T) -> T {
+    private func userInfo<T>(for key: UserInfoKeys, initialize: @escaping () -> T) -> T {
 
         let keyString = key.keyString
         if let value = self.userInfo[keyString] as? T {

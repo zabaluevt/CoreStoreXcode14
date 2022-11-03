@@ -103,7 +103,7 @@ final class StorageInterfaceTests: XCTestCase {
             .appendingPathExtension("db")
         let mappingProvider = XcodeSchemaMappingProvider(
             from: "V1", to: "V2",
-            mappingModelBundle: Bundle.module
+            mappingModelBundle: Bundle(for: Self.self)
         )
         
         let store = SQLiteStore(
@@ -131,7 +131,7 @@ final class StorageInterfaceTests: XCTestCase {
         let fileName = UUID().uuidString + ".db"
         let mappingProvider = XcodeSchemaMappingProvider(
             from: "V1", to: "V2",
-            mappingModelBundle: Bundle.module
+            mappingModelBundle: Bundle(for: Self.self)
         )
         let store = SQLiteStore(
             fileName: fileName,
@@ -197,7 +197,7 @@ final class StorageInterfaceTests: XCTestCase {
         let fileName = UUID().uuidString + ".db"
         let mappingProvider = XcodeSchemaMappingProvider(
             from: "V1", to: "V2",
-            mappingModelBundle: Bundle.module
+            mappingModelBundle: Bundle(for: Self.self)
         )
         let store = SQLiteStore.legacy(
             fileName: fileName,

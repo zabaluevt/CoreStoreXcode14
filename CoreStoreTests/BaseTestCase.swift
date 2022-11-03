@@ -28,17 +28,6 @@ import XCTest
 @testable
 import CoreStore
 
-#if !SWIFT_PACKAGE
-
-extension Bundle {
-    
-    static var module: Bundle {
-        return Bundle(for: BaseTestCase.self)
-    }
-}
-
-#endif
-
 
 // MARK: - BaseTestCase
 
@@ -51,7 +40,7 @@ class BaseTestCase: XCTestCase {
         
         let stack = DataStack(
             xcodeModelName: "Model",
-            bundle: Bundle.module
+            bundle: Bundle(for: Self.self)
         )
         do {
             

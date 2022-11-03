@@ -84,7 +84,7 @@ final class ErrorTests: XCTestCase {
         let schemaHistory = SchemaHistory(
             XcodeDataModelSchema.from(
                 modelName: "Model",
-                bundle: Bundle.module
+                bundle: Bundle(for: Self.self)
             )
         )
         let version = "1.0.0"

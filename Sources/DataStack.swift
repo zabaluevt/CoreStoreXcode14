@@ -46,11 +46,7 @@ public final class DataStack: Equatable {
      - parameter bundle: an optional bundle to load .xcdatamodeld models from. If not specified, the main bundle will be used.
      - parameter migrationChain: the `MigrationChain` that indicates the sequence of model versions to be used as the order for progressive migrations. If not specified, will default to a non-migrating data stack.
      */
-    public convenience init(
-        xcodeModelName: XcodeDataModelFileName = DataStack.applicationName,
-        bundle: Bundle = Bundle.main,
-        migrationChain: MigrationChain = nil
-    ) {
+    public convenience init(xcodeModelName: XcodeDataModelFileName = DataStack.applicationName, bundle: Bundle = Bundle.main, migrationChain: MigrationChain = nil) {
         
         self.init(
             schemaHistory: SchemaHistory(
@@ -83,11 +79,7 @@ public final class DataStack: Equatable {
      - parameter otherSchema: a list of other `DynamicSchema` instances that represent present/previous/future model versions, in any order
      - parameter migrationChain: the `MigrationChain` that indicates the sequence of model versions to be used as the order for progressive migrations. If not specified, will default to a non-migrating data stack.
      */
-    public convenience init(
-        _ schema: DynamicSchema,
-        _ otherSchema: DynamicSchema...,
-        migrationChain: MigrationChain = nil
-    ) {
+    public convenience init(_ schema: DynamicSchema, _ otherSchema: DynamicSchema..., migrationChain: MigrationChain = nil) {
         
         self.init(
             schemaHistory: SchemaHistory(
@@ -116,9 +108,7 @@ public final class DataStack: Equatable {
      ```
      - parameter schemaHistory: the `SchemaHistory` for the stack
      */
-    public required init(
-        schemaHistory: SchemaHistory
-    ) {
+    public required init(schemaHistory: SchemaHistory) {
 
         self.coordinator = NSPersistentStoreCoordinator(managedObjectModel: schemaHistory.rawModel)
         self.rootSavingContext = NSManagedObjectContext.rootSavingContextForCoordinator(self.coordinator)
@@ -149,9 +139,7 @@ public final class DataStack: Equatable {
     /**
      Returns the entity name-to-class type mapping from the `DataStack`'s model.
      */
-    public func entityTypesByName(
-        for type: NSManagedObject.Type
-    ) -> [EntityName: NSManagedObject.Type] {
+    public func entityTypesByName(for type: NSManagedObject.Type) -> [EntityName: NSManagedObject.Type] {
         
         var entityTypesByName: [EntityName: NSManagedObject.Type] = [:]
         for (entityIdentifier, entityDescription) in self.schemaHistory.entityDescriptionsByEntityIdentifier {
@@ -175,9 +163,7 @@ public final class DataStack: Equatable {
     /**
      Returns the entity name-to-class type mapping from the `DataStack`'s model.
      */
-    public func entityTypesByName(
-        for type: CoreStoreObject.Type
-    ) -> [EntityName: CoreStoreObject.Type] {
+    public func entityTypesByName(for type: CoreStoreObject.Type) -> [EntityName: CoreStoreObject.Type] {
         
         var entityTypesByName: [EntityName: CoreStoreObject.Type] = [:]
         for (entityIdentifier, entityDescription) in self.schemaHistory.entityDescriptionsByEntityIdentifier {
@@ -205,9 +191,7 @@ public final class DataStack: Equatable {
     /**
      Returns the `NSEntityDescription` for the specified `NSManagedObject` subclass.
      */
-    public func entityDescription(
-        for type: NSManagedObject.Type
-    ) -> NSEntityDescription? {
+    public func entityDescription(for type: NSManagedObject.Type) -> NSEntityDescription? {
         
         return self.entityDescription(for: Internals.EntityIdentifier(type))
     }
@@ -215,9 +199,7 @@ public final class DataStack: Equatable {
     /**
      Returns the `NSEntityDescription` for the specified `CoreStoreObject` subclass.
      */
-    public func entityDescription(
-        for type: CoreStoreObject.Type
-    ) -> NSEntityDescription? {
+    public func entityDescription(for type: CoreStoreObject.Type) -> NSEntityDescription? {
         
         return self.entityDescription(for: Internals.EntityIdentifier(type))
     }
@@ -225,9 +207,7 @@ public final class DataStack: Equatable {
     /**
      Returns the `NSManagedObjectID` for the specified object URI if it exists in the persistent store.
      */
-    public func objectID(
-        forURIRepresentation url: URL
-    ) -> NSManagedObjectID? {
+    public func objectID(forURIRepresentation url: URL) -> NSManagedObjectID? {
         
         return self.coordinator.managedObjectID(forURIRepresentation: url)
     }
@@ -256,9 +236,7 @@ public final class DataStack: Equatable {
      - returns: the `StorageInterface` added to the stack
      */
     @discardableResult
-    public func addStorageAndWait<T: StorageInterface>(
-        _ storage: T
-    ) throws -> T {
+    public func addStorageAndWait<T: StorageInterface>(_ storage: T) throws -> T {
         
         do {
             
@@ -297,9 +275,7 @@ public final class DataStack: Equatable {
      - returns: the local storage added to the stack. Note that this may not always be the same instance as the parameter argument if a previous `LocalStorage` was already added at the same URL and with the same configuration.
      */
     @discardableResult
-    public func addStorageAndWait<T: LocalStorage>(
-        _ storage: T
-    ) throws -> T {
+    public func addStorageAndWait<T: LocalStorage>(_ storage: T) throws -> T {
         
         return try self.coordinator.performSynchronously {
             
@@ -398,9 +374,7 @@ public final class DataStack: Equatable {
      Prepares deinitializing the `DataStack` by removing all persistent stores. This is not necessary, but can help silence SQLite warnings when actively releasing and recreating `DataStack`s.
      - parameter completion: the closure to execute after all persistent stores are removed
      */
-    public func unsafeRemoveAllPersistentStores(
-        completion: @escaping () -> Void = {}
-    ) {
+    public func unsafeRemoveAllPersistentStores(completion: @escaping () -> Void = {}) {
         
         let coordinator = self.coordinator
         coordinator.performAsynchronously {
@@ -467,7 +441,7 @@ public final class DataStack: Equatable {
     internal let mainContext: NSManagedObjectContext
     internal let schemaHistory: SchemaHistory
     internal let childTransactionQueue = DispatchQueue.serial("com.coreStore.dataStack.childTransactionQueue", qos: .utility)
-    internal let storeMetadataLock: NSRecursiveLock = .init()
+    internal let storeMetadataUpdateQueue = DispatchQueue.concurrent("com.coreStore.persistentStoreBarrierQueue", qos: .userInteractive)
     internal let migrationQueue: OperationQueue = Internals.with {
         
         let migrationQueue = OperationQueue()
@@ -478,68 +452,56 @@ public final class DataStack: Equatable {
         return migrationQueue
     }
     
-    internal func persistentStoreForStorage(
-        _ storage: StorageInterface
-    ) -> NSPersistentStore? {
+    internal func persistentStoreForStorage(_ storage: StorageInterface) -> NSPersistentStore? {
         
         return self.coordinator.persistentStores
             .filter { $0.storageInterface === storage }
             .first
     }
     
-    internal func persistentStores(
-        for entityIdentifier: Internals.EntityIdentifier
-    ) -> [NSPersistentStore]? {
-
-        self.storeMetadataLock.lock()
-        defer {
-            self.storeMetadataLock.unlock()
+    internal func persistentStores(for entityIdentifier: Internals.EntityIdentifier) -> [NSPersistentStore]? {
+        
+        var returnValue: [NSPersistentStore]? = nil
+        self.storeMetadataUpdateQueue.sync(flags: .barrier) {
+            
+            returnValue = self.finalConfigurationsByEntityIdentifier[entityIdentifier]?
+                .map({ self.persistentStoresByFinalConfiguration[$0]! }) ?? []
         }
-        return self.finalConfigurationsByEntityIdentifier[entityIdentifier]?
-            .map({ self.persistentStoresByFinalConfiguration[$0]! }) ?? []
+        return returnValue
     }
     
-    internal func persistentStore(
-        for entityIdentifier: Internals.EntityIdentifier,
-        configuration: ModelConfiguration,
-        inferStoreIfPossible: Bool
-    ) -> (store: NSPersistentStore?, isAmbiguous: Bool) {
-
-        self.storeMetadataLock.lock()
-        defer {
-            self.storeMetadataLock.unlock()
-        }
-        let configurationsForEntity = self.finalConfigurationsByEntityIdentifier[entityIdentifier] ?? []
-        if let configuration = configuration {
-
-            if configurationsForEntity.contains(configuration) {
-
-                return (store: self.persistentStoresByFinalConfiguration[configuration], isAmbiguous: false)
+    internal func persistentStore(for entityIdentifier: Internals.EntityIdentifier, configuration: ModelConfiguration, inferStoreIfPossible: Bool) -> (store: NSPersistentStore?, isAmbiguous: Bool) {
+        
+        return self.storeMetadataUpdateQueue.sync(flags: .barrier) { () -> (store: NSPersistentStore?, isAmbiguous: Bool) in
+            
+            let configurationsForEntity = self.finalConfigurationsByEntityIdentifier[entityIdentifier] ?? []
+            if let configuration = configuration {
+                
+                if configurationsForEntity.contains(configuration) {
+                    
+                    return (store: self.persistentStoresByFinalConfiguration[configuration], isAmbiguous: false)
+                }
+                else if !inferStoreIfPossible {
+                    
+                    return (store: nil, isAmbiguous: false)
+                }
             }
-            else if !inferStoreIfPossible {
-
+            
+            switch configurationsForEntity.count {
+                
+            case 0:
                 return (store: nil, isAmbiguous: false)
+                
+            case 1 where inferStoreIfPossible:
+                return (store: self.persistentStoresByFinalConfiguration[configurationsForEntity.first!], isAmbiguous: false)
+                
+            default:
+                return (store: nil, isAmbiguous: true)
             }
-        }
-
-        switch configurationsForEntity.count {
-
-        case 0:
-            return (store: nil, isAmbiguous: false)
-
-        case 1 where inferStoreIfPossible:
-            return (store: self.persistentStoresByFinalConfiguration[configurationsForEntity.first!], isAmbiguous: false)
-
-        default:
-            return (store: nil, isAmbiguous: true)
         }
     }
     
-    internal func createPersistentStoreFromStorage(
-        _ storage: StorageInterface,
-        finalURL: URL?,
-        finalStoreOptions: [AnyHashable: Any]?
-    ) throws -> NSPersistentStore {
+    internal func createPersistentStoreFromStorage(_ storage: StorageInterface, finalURL: URL?, finalStoreOptions: [AnyHashable: Any]?) throws -> NSPersistentStore {
         
         let persistentStore = try self.coordinator.addPersistentStore(
             ofType: type(of: storage).storeType,
@@ -548,13 +510,8 @@ public final class DataStack: Equatable {
             options: finalStoreOptions
         )
         persistentStore.storageInterface = storage
-
-        do {
-
-            self.storeMetadataLock.lock()
-            defer {
-                self.storeMetadataLock.unlock()
-            }
+        
+        self.storeMetadataUpdateQueue.async(flags: .barrier) {
             
             let configurationName = persistentStore.configurationName
             self.persistentStoresByFinalConfiguration[configurationName] = persistentStore
@@ -577,9 +534,7 @@ public final class DataStack: Equatable {
         return persistentStore
     }
     
-    internal func entityDescription(
-        for entityIdentifier: Internals.EntityIdentifier
-    ) -> NSEntityDescription? {
+    internal func entityDescription(for entityIdentifier: Internals.EntityIdentifier) -> NSEntityDescription? {
         
         return self.schemaHistory.entityDescriptionsByEntityIdentifier[entityIdentifier]
     }

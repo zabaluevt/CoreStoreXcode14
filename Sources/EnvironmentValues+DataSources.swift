@@ -33,6 +33,7 @@ import CoreData
 
 // MARK: - EnvironmentValues
 
+@available(iOS 13.0, tvOS 13.0, watchOS 6.0, macOS 10.15, *)
 extension EnvironmentValues {
 
     // MARK: Public
@@ -59,6 +60,7 @@ extension EnvironmentValues {
 
     // MARK: - DataStackEnvironmentKey
 
+    @available(iOS 13.0, tvOS 13.0, watchOS 6.0, macOS 10.15, *)
     fileprivate struct DataStackKey: EnvironmentKey {
 
         // MARK: FilePrivate
