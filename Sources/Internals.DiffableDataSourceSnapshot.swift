@@ -825,10 +825,6 @@ extension Internals {
                 to newSectionIndex: Int
             ) {
                 
-                self.sections.move(
-                    fromOffsets: .init(integer: sectionIndex),
-                    toOffset: newSectionIndex
-                )
             }
 
             mutating func update<S: Sequence>(
